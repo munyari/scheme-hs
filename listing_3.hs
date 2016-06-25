@@ -25,7 +25,7 @@ data LispVal = Atom String
 parseString :: Parser LispVal
 parseString = do
   char '"'
-  x <- many (noneOf "\"")
+  x <- many (noneOf "\"") <|> string("\\\"")
   char '"'
   return $ String x
 
