@@ -41,7 +41,10 @@ parseAtom = do
 
 -- FLASH: function composition
 parseNumber :: Parser LispVal
-parseNumber = liftM (Number . read) $ many1 digit
+-- parseNumber = liftM (Number . read) $ many1 digit
+parseNumber = do 
+                x1 <- many1 digit
+                return ((Number . read) x1)
 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom <|> parseString <|> parseNumber
