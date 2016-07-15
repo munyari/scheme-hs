@@ -22,6 +22,7 @@ data LispVal = Atom String
              | Number Integer
              | String String
              | Bool Bool
+             | Character Char
 
 parseString :: Parser LispVal
 parseString = do
@@ -57,8 +58,36 @@ parseNumber = parseHex <|> parseOct <|> parseDecimal where -- <|> parseBin where
               parseDecimal = (optional(string "#d") >> many1 digit)
                 >>= (return . Number . read)
 
+
+-- dipping into the beautiful world of unicode escape sequences
+parseCharacter :: Parser LispVal
+parseCharacter = parseNul <|> parsePage <|> parseReturn <|> parseRubout
+                <|> parseSpace <|> parseTab <|> parseAlarm <|> parseBackspace
+                <|> parseLinefeed <|> parseNewline <|> parseVtab
+                <|> parseEsc <|> parseDelete 
+                <|> parseChar
+                        where
+                          parseNul       = string("#\\nul") >> (return $ Character '\NUL')
+                          parseSpace     = string("#\\space") >> (return $ Character '\SP')
+                          parseReturn    = string("#\\return") >> (return $ Character '\CR')
+                          parsePage      = string("#\\page")  >> (return $ Character '\FF')
+                          parseTab       = string("#\\tab") >> (return $ Character '\BS')
+                          parseAlarm     = string("#\\alarm") >> (return $ Character '\BEL')
+                          parseBackspace = string("#\\backspace")  >> (return $ Character '\BS')
+                          parseLinefeed  = string("#\\linefeed") >> (return $ Character '\n')
+                          parseNewline   = string("#\\newline") >> (return $ Character '\r')
+                          parseVtab      = string("#\\vtab") >> (return $ Character '\VT')
+                          parseEsc       = string("#\\esc") >> (return $ Character '\ESC')
+                          parseDelete    = string("#\\delete") >> (return $ Character '\DEL')
+                          parseRubout    = string("#\\rubout") >> (return $ Character '\DEL')
+                          parseChar      = do
+                            string("\\#")
+                            x1 <- symbol <|> letter <|> digit
+                            return $ Character x1
+
 parseExpr :: Parser LispVal
-parseExpr = parseAtom <|> parseString <|> parseNumber
+parseExpr = parseAtom <|> parseString <|> parseNumber <|> parseCharacter
+
 
 main :: IO ()
 main = do
