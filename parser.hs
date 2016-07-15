@@ -2,6 +2,7 @@ module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment
 import Control.Monad
+import Numeric (readHex, readOct)
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -44,9 +45,17 @@ parseAtom = do
            "#f" -> Bool False
            _    -> Atom atom
 
--- FLASH: function composition
+-- TODO: implement parseBin
 parseNumber :: Parser LispVal
-parseNumber = (many1 digit) >>= (return . Number . read)
+parseNumber = parseHex <|> parseOct <|> parseDecimal where -- <|> parseBin where
+              parseHex = ((string "#x") >> many1 hexDigit)
+                >>= (return . Number . fst . head . readHex)
+              parseOct = ((string "#o") >> many1 octDigit)
+                >>= (return . Number . fst . head . readOct)
+              -- parseBin = ((string "#b") >> many1 (oneOf "01"))
+              --   >>= (return . Number . readBin)
+              parseDecimal = (optional(string "#d") >> many1 digit)
+                >>= (return . Number . read)
 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom <|> parseString <|> parseNumber
