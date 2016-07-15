@@ -2,7 +2,7 @@ module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment
 import Control.Monad
-import Numeric (readHex, readOct)
+import Numeric (readHex, readOct, readFloat)
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -23,6 +23,7 @@ data LispVal = Atom String
              | String String
              | Bool Bool
              | Character Char
+             | Float Double
 
 parseString :: Parser LispVal
 parseString = do
@@ -85,8 +86,14 @@ parseCharacter = parseNul <|> parsePage <|> parseReturn <|> parseRubout
                             x1 <- symbol <|> letter <|> digit
                             return $ Character x1
 
+parseFloat :: Parser LispVal
+parseFloat =
+    (many(digit) >> char('.') >> many1(digit))
+        >>= (return . Float . fst . head . readFloat)
+
 parseExpr :: Parser LispVal
-parseExpr = parseAtom <|> parseString <|> parseNumber <|> parseCharacter
+parseExpr = parseAtom <|> parseString <|> parseFloat <|> parseNumber
+            <|> parseCharacter
 
 
 main :: IO ()
