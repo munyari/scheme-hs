@@ -13,7 +13,7 @@ spaces = skipMany1 space
 readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
                      Left err -> "No match: " ++ show err
-                     Right val -> "Found value"
+                     Right val -> "Found value " ++ show val
 
 -- FLASH: an algebraic data type is just an enumerated type
 data LispVal = Atom String
@@ -107,8 +107,7 @@ parseFloat =
 parseExpr :: Parser LispVal
 parseExpr = parseAtom 
             <|> parseString 
-            <|> parseFloat 
-            <|> parseNumber
+            <|> try parseFloat <|> parseNumber
             <|> parseCharacter
             <|> parseQuoted
             <|> do  char '('
@@ -130,6 +129,21 @@ parseQuoted = do
   char '\''
   x <- parseExpr
   return $ List [Atom "quote", x]
+
+instance Show LispVal where show = showVal
+
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#t"
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ 
+                                  showVal tail ++ ")"
+
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
 
 main :: IO ()
 main = do
