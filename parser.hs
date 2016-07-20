@@ -15,7 +15,6 @@ readExpr input = case parse parseExpr "lisp" input of
                      Left err -> "No match: " ++ show err
                      Right val -> "Found value " ++ show val
 
--- FLASH: an algebraic data type is just an enumerated type
 data LispVal = Atom String
              | List [LispVal]
              | DottedList [LispVal] LispVal
@@ -62,42 +61,42 @@ parseNumber = parseHex <|> parseOct <|> parseDecimal where -- <|> parseBin where
 
 -- dipping into the beautiful world of unicode escape sequences
 parseCharacter :: Parser LispVal
-parseCharacter = parseNul <|> parsePage <|> parseReturn <|> parseRubout
+parseCharacter = string("#\\") >>
+            (try  (try parseRubout <|> parseReturn <|> parseNul <|> parsePage
                 <|> parseSpace <|> parseTab <|> parseAlarm <|> parseBackspace
                 <|> parseLinefeed <|> parseNewline <|> parseVtab
-                <|> parseEsc <|> parseDelete
-                <|> parseChar
+                <|> parseEsc <|> parseDelete)
+                <|> parseChar)
                         where
-                          parseNul       = string("#\\nul")
+                          parseNul       = string("nul")
                               >> (return $ Character '\NUL')
-                          parseSpace     = string("#\\space")
+                          parseSpace     = string("space")
                               >> (return $ Character '\SP')
-                          parseReturn    = string("#\\return")
+                          parseReturn    = string("return")
                               >> (return $ Character '\CR')
-                          parsePage      = string("#\\page")
+                          parsePage      = string("page")
                               >> (return $ Character '\FF')
-                          parseTab       = string("#\\tab")
+                          parseTab       = string("tab")
                               >> (return $ Character '\BS')
-                          parseAlarm     = string("#\\alarm")
+                          parseAlarm     = string("alarm")
                               >> (return $ Character '\BEL')
-                          parseBackspace = string("#\\backspace")
+                          parseBackspace = string("backspace")
                               >> (return $ Character '\BS')
-                          parseLinefeed  = string("#\\linefeed")
+                          parseLinefeed  = string("linefeed")
                               >> (return $ Character '\n')
-                          parseNewline   = string("#\\newline")
+                          parseNewline   = string("newline")
                               >> (return $ Character '\r')
-                          parseVtab      = string("#\\vtab")
+                          parseVtab      = string("vtab")
                               >> (return $ Character '\VT')
-                          parseEsc       = string("#\\esc")
+                          parseEsc       = string("esc")
                               >> (return $ Character '\ESC')
-                          parseDelete    = string("#\\delete")
+                          parseDelete    = string("delete")
                               >> (return $ Character '\DEL')
-                          parseRubout    = string("#\\rubout")
+                          parseRubout    = string("rubout")
                               >> (return $ Character '\DEL')
-                          parseChar      = do
-                            string("\\#")
-                            x1 <- symbol <|> letter <|> digit
-                            return $ Character x1
+                          parseChar      =
+                            (symbol <|> letter <|> digit)
+                            >>= (return . Character)
 
 parseFloat :: Parser LispVal
 parseFloat =
