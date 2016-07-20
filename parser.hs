@@ -99,9 +99,11 @@ parseCharacter = string("#\\") >>
                             >>= (return . Character)
 
 parseFloat :: Parser LispVal
-parseFloat =
-    (many(digit) >> char('.') >> many1(digit))
-        >>= (return . Float . fst . head . readFloat)
+parseFloat = do
+    x1 <- many(digit)
+    char('.')
+    x2 <- many(digit)
+    return $ Float (fst . head $ readFloat (x1 ++ "." ++ x2))
 
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
@@ -135,6 +137,7 @@ showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Atom name) = name
 showVal (Number contents) = show contents
+showVal (Float contents) = show contents
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#t"
 showVal (Character char) = [char]
