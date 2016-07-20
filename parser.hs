@@ -1,8 +1,11 @@
 module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.ParserCombinators.ReadP (ReadP, readP_to_S)
 import System.Environment
 import Control.Monad
 import Numeric (readHex, readOct, readFloat)
+import Text.Read.Lex (readIntP)
+import Data.Char (ord)
 
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
@@ -46,18 +49,37 @@ parseAtom = do
            "#f" -> Bool False
            _    -> Atom atom
 
--- TODO: implement parseBin
+binDigit :: Parser Char
+binDigit = oneOf "01"
+
 parseNumber :: Parser LispVal
-parseNumber = parseHex <|> parseOct <|> parseDecimal where -- <|> parseBin where
-              parseHex = ((string "#x") >> many1 hexDigit)
+parseNumber = try (string("#") >> (parseHex <|> parseBin <|> parseOct))
+                <|> parseDecimal where
+              parseHex = ((string "x") >> many1 hexDigit)
                 >>= (return . Number . fst . head . readHex)
-              parseOct = ((string "#o") >> many1 octDigit)
+              parseOct = ((string "o") >> many1 octDigit)
                 >>= (return . Number . fst . head . readOct)
-              -- parseBin = ((string "#b") >> many1 (oneOf "01"))
-              --   >>= (return . Number . readBin)
+              parseBin = ((string "b") >> many1 binDigit)
+                >>= (return . Number . fst . head . readBin)
               parseDecimal = (optional(string "#d") >> many1 digit)
                 >>= (return . Number . read)
 
+readIntP' :: (Eq a, Num a) => a -> ReadP a
+readIntP' base = readIntP base isDigit valDigit
+  where
+    isDigit c = maybe False (const True) (valDig base c)
+    valDigit c = maybe 0     id          (valDig base c)
+
+readBinP :: (Eq a, Num a) => ReadP a
+readBinP = readIntP' 2
+
+readBin :: (Eq a, Num a) => ReadS a
+readBin = readP_to_S readBinP
+
+valDig :: (Eq a, Num a) => a -> Char -> Maybe Int
+valDig 2 c
+  | '0' == c || '1' == c = Just(ord c - ord '0')
+  | otherwise              = Nothing
 
 -- dipping into the beautiful world of unicode escape sequences
 parseCharacter :: Parser LispVal
@@ -179,7 +201,6 @@ unpackNum (String n) = let parsed = reads n :: [(Integer, String)] in
                                else fst $ parsed !! 0
 unpackNum (List [n]) = unpackNum n
 unpackNum _ = 0
-
 
 main :: IO ()
 main = getArgs >>= print . eval . readExpr . head
