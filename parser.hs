@@ -104,9 +104,9 @@ parseFloat =
         >>= (return . Float . fst . head . readFloat)
 
 parseExpr :: Parser LispVal
-parseExpr = parseAtom 
-            <|> parseString 
-            <|> try parseFloat <|> parseNumber
+parseExpr = parseAtom
+            <|> parseString
+            <|> try (try parseFloat <|> parseNumber)
             <|> parseCharacter
             <|> parseQuoted
             <|> do  char '('
