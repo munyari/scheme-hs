@@ -161,6 +161,8 @@ parseExpr = parseAtom
             <|> parseInteger
             <|> parseCharacter
             <|> parseQuoted
+            <|> parseQuasiquote
+            <|> parseUnQuote
             <|> do  char '('
                     x <- try parseList <|> parseDottedList
                     char ')'
@@ -180,6 +182,18 @@ parseQuoted = do
   char '\''
   x <- parseExpr
   return $ List [Atom "quote", x]
+
+parseQuasiquote :: Parser LispVal
+parseQuasiquote = do
+  char '`'
+  x <- parseExpr
+  return $ List [Atom "quasiquote", x]
+
+parseUnQuote :: Parser LispVal
+parseUnQuote = do
+  char ','
+  x <- parseExpr
+  return $ List [Atom "unquote", x]
 
 instance Show LispVal where show = showVal
 
