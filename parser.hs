@@ -6,6 +6,8 @@ import Control.Monad
 import Numeric (readHex, readOct, readFloat)
 import Text.Read.Lex (readIntP)
 import Data.Char (ord)
+import Data.Ratio (Ratio, (%))
+import Data.Complex (Complex(..))
 
 symbol :: Parser Char
 symbol = oneOf "!$%&|*+-/:<=>?@^_~"
@@ -21,11 +23,32 @@ readExpr input = case parse parseExpr "lisp" input of
 data LispVal = Atom String
              | List [LispVal]
              | DottedList [LispVal] LispVal
-             | Number Integer
+             | Complex (Complex Double)
+             | Rational (Ratio Integer)
+             | Integer Integer
              | String String
              | Bool Bool
              | Character Char
              | Float Double
+
+parseRational :: Parser LispVal
+parseRational = do
+  x1 <- many1 digit
+  char '/'
+  x2 <- many1 digit
+  return $ Rational ((read x1) % (read x2))
+
+toDouble :: LispVal -> Double
+toDouble(Float f) = realToFrac f
+toDouble(Integer n) = fromIntegral n
+
+parseComplex :: Parser LispVal
+parseComplex = do
+  x1 <- (try parseFloat <|> parseDecimal)
+  char '+'
+  x2 <- (try parseFloat <|> parseDecimal)
+  char 'i'
+  return $ Complex ((toDouble x1) :+ (toDouble x2))
 
 parseString :: Parser LispVal
 parseString = do
@@ -52,17 +75,19 @@ parseAtom = do
 binDigit :: Parser Char
 binDigit = oneOf "01"
 
-parseNumber :: Parser LispVal
-parseNumber = try (string("#") >> (parseHex <|> parseBin <|> parseOct))
+parseDecimal :: Parser LispVal
+parseDecimal = (optional(string "#d") >> many1 digit)
+    >>= (return . Integer . read)
+
+parseInteger :: Parser LispVal
+parseInteger = try (string("#") >> (parseHex <|> parseBin <|> parseOct))
                 <|> parseDecimal where
               parseHex = ((string "x") >> many1 hexDigit)
-                >>= (return . Number . fst . head . readHex)
+                >>= (return . Integer . fst . head . readHex)
               parseOct = ((string "o") >> many1 octDigit)
-                >>= (return . Number . fst . head . readOct)
+                >>= (return . Integer . fst . head . readOct)
               parseBin = ((string "b") >> many1 binDigit)
-                >>= (return . Number . fst . head . readBin)
-              parseDecimal = (optional(string "#d") >> many1 digit)
-                >>= (return . Number . read)
+                >>= (return . Integer . fst . head . readBin)
 
 readIntP' :: (Eq a, Num a) => a -> ReadP a
 readIntP' base = readIntP base isDigit valDigit
@@ -130,7 +155,10 @@ parseFloat = do
 parseExpr :: Parser LispVal
 parseExpr = parseAtom
             <|> parseString
-            <|> try (try parseFloat <|> parseNumber)
+            <|> try parseComplex
+            <|> try parseRational
+            <|> try parseFloat 
+            <|> parseInteger
             <|> parseCharacter
             <|> parseQuoted
             <|> do  char '('
@@ -158,8 +186,10 @@ instance Show LispVal where show = showVal
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
 showVal (Atom name) = name
-showVal (Number contents) = show contents
+showVal (Integer contents) = show contents
 showVal (Float contents) = show contents
+showVal (Rational contents) = show contents
+showVal (Complex contents) = show contents
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#t"
 showVal (Character char) = [char]
@@ -173,10 +203,13 @@ unwordsList = unwords . map showVal
 
 eval :: LispVal -> LispVal
 eval val@(String _) = val
-eval val@(Number _) = val
+eval val@(Integer _) = val
 eval val@(Bool _) = val
 eval val@(Float _) = val
 eval val@(Character _) = val
+eval val@(Rational _) = val
+eval val@(Complex _) = val
+
 eval (List [Atom "quote", val]) = val
 eval (List (Atom func : args)) = apply func $ map eval args
 
@@ -193,10 +226,10 @@ primitives = [("+", numericBinop (+)),
               ("remainder", numericBinop rem)]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
-numericBinop op params = Number $ foldl1 op $ map unpackNum params
+numericBinop op params = Integer $ foldl1 op $ map unpackNum params
 
 unpackNum :: LispVal -> Integer
-unpackNum (Number n) = n
+unpackNum (Integer n) = n
 unpackNum (String n) = let parsed = reads n :: [(Integer, String)] in
                            if null parsed
                                then 0
