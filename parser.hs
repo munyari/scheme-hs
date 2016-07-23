@@ -233,8 +233,7 @@ eval (List [Atom "if", pred, conseq, alt]) =
      do result <- eval pred
         case result of
              Bool False -> eval alt
-             otherwise  -> eval conseq
-             -- otherwise -> throwError $ TypeMismatch "boolean" result
+             otherwise -> throwError $ TypeMismatch "boolean" result
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval val@(_) = return val
 
