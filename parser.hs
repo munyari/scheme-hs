@@ -287,6 +287,9 @@ unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
 unpackStr :: LispVal -> ThrowsError String
 unpackStr (String s)  = return s
+unpackStr (Complex s) = return $ show s
+unpackStr (Rational s) = return $ show s
+unpackStr (Float s) = return $ show s
 unpackStr (Integer s) = return $ show s
 unpackStr (Bool s)    = return $ show s
 unpackStr notString   = throwError $ TypeMismatch "string" notString
