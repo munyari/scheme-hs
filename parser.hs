@@ -281,6 +281,8 @@ numericBinop op [] = throwError $ NumArgs 2 []
 numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
 numericBinop op params = mapM unpackNum params >>= return . Integer . foldl1 op
 
+-- TODO: is unpack num only used in comparisons? If so, then makes sense to 
+-- convert the full numeric tower to complex numbers and compare in that way
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Integer n) = return n
 unpackNum notNum = throwError $ TypeMismatch "number" notNum
@@ -365,7 +367,11 @@ cons badArgList                = throwError $ NumArgs 2 badArgList
 
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(Bool arg1), (Bool arg2)]            = return $ Bool $ arg1 == arg2
+-- TODO: deal with floating point weirdness
+eqv [(Complex arg1), (Complex arg2)]      = return $ Bool $ arg1 == arg2
+eqv [(Rational arg1), (Rational arg2)]    = return $ Bool $ arg1 == arg2
 eqv [(Integer arg1), (Integer arg2)]      = return $ Bool $ arg1 == arg2
+eqv [(Float arg1), (Float arg2)]          = return $ Bool $ arg1 == arg2
 eqv [(String arg1), (String arg2)]        = return $ Bool $ arg1 == arg2
 eqv [(Atom arg1), (Atom arg2)]            = return $ Bool $ arg1 == arg2
 eqv [(DottedList xs x), (DottedList ys y)] = eqv [List $ xs ++ [x], List $ ys ++ [y]]
