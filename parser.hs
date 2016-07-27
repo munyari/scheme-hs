@@ -8,7 +8,7 @@ import Control.Monad.Error
 import Numeric (readHex, readOct, readFloat)
 import Text.Read.Lex (readIntP)
 import Data.Char (ord)
-import Data.Ratio (Ratio, (%))
+import Data.Ratio (Rational, (%), numerator, denominator)
 import Data.Complex (Complex(..))
 import System.IO
 import Data.IORef
@@ -28,7 +28,7 @@ data LispVal = Atom String
              | List [LispVal]
              | DottedList [LispVal] LispVal
              | Complex (Complex Double)
-             | Rational (Ratio Integer)
+             | Rational Rational
              | Integer Integer
              | String String
              | Bool Bool
@@ -367,7 +367,6 @@ cons badArgList                = throwError $ NumArgs 2 badArgList
 
 eqv :: [LispVal] -> ThrowsError LispVal
 eqv [(Bool arg1), (Bool arg2)]            = return $ Bool $ arg1 == arg2
--- TODO: deal with floating point weirdness
 eqv [(Complex arg1), (Complex arg2)]      = return $ Bool $ arg1 == arg2
 eqv [(Rational arg1), (Rational arg2)]    = return $ Bool $ arg1 == arg2
 eqv [(Integer arg1), (Integer arg2)]      = return $ Bool $ arg1 == arg2
