@@ -279,13 +279,33 @@ primitives = [("+", numericBinop (+)),
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericBinop op [] = throwError $ NumArgs 2 []
 numericBinop op singleVal@[_] = throwError $ NumArgs 2 singleVal
-numericBinop op params = mapM unpackNum params >>= return . Integer . foldl1 op
+numericBinop op params = mapM unpackInteger params >>= return . Integer . foldl1 op
 
--- TODO: is unpack num only used in comparisons? If so, then makes sense to 
--- convert the full numeric tower to complex numbers and compare in that way
-unpackNum :: LispVal -> ThrowsError Integer
-unpackNum (Integer n) = return n
-unpackNum notNum = throwError $ TypeMismatch "number" notNum
+unpackInteger :: LispVal -> ThrowsError Integer
+unpackInteger (Integer n) = return n
+unpackInteger notInteger = throwError $ TypeMismatch "integer" notInteger
+
+unpackRational :: LispVal -> ThrowsError Rational
+unpackRational (Rational n) = return n
+unpackRational (Integer n) = return (n % 1)
+unpackRational notRational = throwError $ TypeMismatch "rational" notRational
+
+unpackFloat :: LispVal -> ThrowsError Double
+unpackFloat (Float n) = return n
+unpackFloat (Integer n) = return $ fromIntegral n
+unpackFloat (Rational n) = return (x / y)
+  where x = fromIntegral $ numerator n
+        y = fromIntegral $ denominator n
+unpackFloat notFloat = throwError $ TypeMismatch "float" notFloat
+
+unpackComplex :: LispVal -> ThrowsError (Complex Double)
+unpackComplex (Complex n) = return n
+unpackComplex (Float n) = return (n :+ 0.0)
+unpackComplex (Rational n) = return (x / y :+ 0.0)
+  where x = fromIntegral $ numerator n
+        y = fromIntegral $ denominator n
+unpackComplex (Integer n) = return (fromIntegral n :+ 0.0)
+unpackComplex notComplex = throwError $ TypeMismatch "complex" notComplex
 
 unpackStr :: LispVal -> ThrowsError String
 unpackStr (String s)  = return s
@@ -341,7 +361,7 @@ boolBinop unpacker op args = if length args /= 2
                                      right <- unpacker $ args !! 1
                                      return $ Bool $ left `op` right
 
-numBoolBinop  = boolBinop unpackNum
+numBoolBinop  = boolBinop unpackInteger
 strBoolBinop  = boolBinop unpackStr
 boolBoolBinop = boolBinop unpackBool
 
@@ -394,7 +414,7 @@ unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
 equal :: [LispVal] -> ThrowsError LispVal
 equal [arg1, arg2] = do
   primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2)
-                     [AnyUnpacker unpackNum, AnyUnpacker unpackStr,
+                     [AnyUnpacker unpackInteger, AnyUnpacker unpackStr,
                      AnyUnpacker unpackBool]
   eqvEquals <- eqv [arg1, arg2]
   return $ Bool $ (primitiveEquals || let (Bool x) = eqvEquals in x)
